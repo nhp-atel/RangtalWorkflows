@@ -225,6 +225,33 @@ Attached via Google Form > Script Editor > Triggers > On Form Submit.
 - **Twilio failure:** If WhatsApp send fails, set status to MANUAL_REVIEW and log the error. Do not block the approval flow.
 - **Apps Script failure:** Form data still lands in the native Google Form responses sheet as a fallback. Manual recovery possible.
 
+## API Keys & Credentials
+
+| Credential | Where to get it | Used by | Configured in |
+|------------|----------------|---------|---------------|
+| **Google OAuth2** (Sheets API) | Google Cloud Console → APIs & Services → Credentials → OAuth 2.0 Client ID | WF1, WF2, WF3 (read/write sheets) | n8n Cloud → Credentials → Google Sheets OAuth2 |
+| **Twilio Account SID** | Twilio Console → Account Info | WF1, WF2, WF3 (send WhatsApp) | n8n Cloud → Credentials → Twilio |
+| **Twilio Auth Token** | Twilio Console → Account Info | WF1, WF2, WF3 (send WhatsApp) | n8n Cloud → Credentials → Twilio |
+| **Twilio WhatsApp Sender Number** | Twilio Console → Messaging → Senders → WhatsApp Senders | WF1, WF2, WF3 | n8n workflow config (From field) |
+| **n8n Webhook URLs** (auto-generated) | n8n Cloud → each Webhook node generates its own URL | Apps Script (intake), Approve link (approval) | Apps Script code, WF1 approve link template |
+
+### Google OAuth2 Scopes Required
+
+- `https://www.googleapis.com/auth/spreadsheets` — read/write Pending & Confirmed Leads
+- `https://www.googleapis.com/auth/drive.readonly` — access Zelle screenshot uploads (if stored in Drive)
+
+### n8n Cloud Credential Setup Order
+
+1. **Google Sheets OAuth2** — connect n8n to your Google account. n8n Cloud handles the OAuth flow — click "Connect" in the credential setup, authorize, done.
+2. **Twilio** — enter Account SID + Auth Token. Test by sending a WhatsApp to your own number.
+3. **Activate webhook URLs** — once WF1 and WF2 are built, n8n generates the webhook URLs. Copy the WF1 intake URL into the Apps Script.
+
+### Notes
+
+- No standalone API keys needed — Google uses OAuth2 (managed by n8n), Twilio uses SID+Token pair.
+- The Apps Script does not need its own credentials — it runs under the form owner's Google account and calls the n8n webhook URL (public endpoint, no auth needed on the n8n side since form data is not sensitive enough to warrant webhook auth).
+- If you want to secure the intake webhook, you can add a shared secret as a query parameter and validate it in WF1.
+
 ## Setup Prerequisites
 
 1. **Google Form** created with fields matching the spec
