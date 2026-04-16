@@ -11,23 +11,50 @@ Automated registration and payment tracking system for Rangtal Garba classes. Bu
 - Cash registrations get an automatic reminder
 - Everything is tracked in a two-tab Google Spreadsheet
 
+## Live Workflow Simulation
+
+> **[Launch Interactive Simulation](https://nhp-atel.github.io/RangtalWorkflows/simulation/)** — Watch the full Zelle and Cash registration flows step-by-step in your browser.
+
 ## Architecture
 
-```
-Google Form
-  → Apps Script webhook
-    → n8n Cloud (WF1: Lead Intake)
-      → Google Sheets (Pending Leads)
-      → Branch:
-          Zelle → WhatsApp to team (approve link)
-                → Team clicks link
-                → n8n Cloud (WF2: Zelle Approval)
-                  → Validates token
-                  → WhatsApp confirmation + onboarding to customer
-                  → Google Sheets (Confirmed Leads)
+### Zelle Payment Flow
 
-          Cash  → WhatsApp reminder to customer
-                → Stays in Pending Leads
+```mermaid
+flowchart TD
+    A[Customer Submits Google Form] -->|Apps Script webhook| B[WF1: Lead Intake]
+    B --> C[Generate Lead ID + Token]
+    C --> D[Duplicate Check]
+    D -->|New lead| E[Write to Pending Leads Sheet]
+    E --> F{Payment Method?}
+
+    F -->|Zelle| G[Status: PENDING_ZELLE_VERIFICATION]
+    G --> H[Send WhatsApp to Team with Approve Link]
+    H --> I[Team Checks Bank App]
+    I --> J[Team Clicks Approve Link]
+    J -->|Webhook GET| K[WF2: Zelle Approval]
+    K --> L[Validate Token]
+    L --> M[Update Sheet: PAID_VERIFIED]
+    M --> N[Send Payment Confirmation WhatsApp]
+    N --> O[Send Onboarding WhatsApp]
+    O --> P[Append to Confirmed Leads Sheet]
+    P --> Q[Status: CONFIRMED]
+
+    F -->|Cash| R[Status: PENDING_CASH]
+    R --> S[Send Cash Reminder WhatsApp]
+    S --> T[Mark Follow-up Sent]
+    T --> U[Stays in Pending Leads]
+
+    style A fill:#4285f4,stroke:#4285f4,color:#fff
+    style B fill:#1a1f2e,stroke:#58a6ff,color:#58a6ff
+    style K fill:#1a1f2e,stroke:#3fb950,color:#3fb950
+    style E fill:#1a1f2e,stroke:#34a853,color:#34a853
+    style P fill:#1a1f2e,stroke:#34a853,color:#34a853
+    style H fill:#1a1f2e,stroke:#f22f46,color:#f22f46
+    style N fill:#1a1f2e,stroke:#f22f46,color:#f22f46
+    style O fill:#1a1f2e,stroke:#f22f46,color:#f22f46
+    style S fill:#1a1f2e,stroke:#f22f46,color:#f22f46
+    style Q fill:#238636,stroke:#2ea043,color:#fff
+    style U fill:#1a1f2e,stroke:#d29922,color:#d29922
 ```
 
 ## Status Model
