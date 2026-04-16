@@ -13,7 +13,7 @@ Automated registration and payment tracking system for Rangtal Garba classes. Bu
 
 ## Live Workflow Simulation
 
-> **[Launch Interactive Simulation](https://nhp-atel.github.io/RangtalWorkflows/simulation/)** — Watch the full Zelle and Cash registration flows step-by-step in your browser.
+> **[Launch Interactive Simulation](https://nhp-atel.github.io/RangtalWorkflows/)** — Watch the full Zelle and Cash registration flows step-by-step in your browser.
 
 ## Architecture
 

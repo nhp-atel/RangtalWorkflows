@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rangtal Garba — Workflow Simulation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, system-ui, 'Segoe UI', sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    .header {
+      text-align: center;
+      padding: 2rem 1rem 1rem;
+      border-bottom: 1px solid #21262d;
+      background: linear-gradient(180deg, rgba(88,166,255,0.05) 0%, transparent 100%);
+    }
+    .header h1 { font-size: 1.5rem; color: #58a6ff; margin-bottom: 0.3rem; }
+    .header p { color: #8b949e; font-size: 0.85rem; }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 0.75rem;
+      padding: 1.25rem;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 0.6rem 1.2rem;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      background: #161b22;
+      color: #e6edf3;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+    .btn:hover { border-color: #58a6ff; background: #1c2333; }
+    .btn.active { border-color: #58a6ff; background: rgba(88,166,255,0.15); color: #58a6ff; }
+    .btn.go { background: #238636; border-color: #2ea043; color: white; }
+    .btn.go:hover { background: #2ea043; }
+    .btn.reset { border-color: #f85149; color: #f85149; }
+    .btn.reset:hover { background: rgba(248,81,73,0.1); }
+
+    .simulation {
+      display: flex;
+      gap: 1.5rem;
+      padding: 1.5rem;
+      max-width: 1400px;
+      margin: 0 auto;
+      min-height: 70vh;
+    }
+
+    .flow-panel {
+      flex: 2;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+    }
+
+    .log-panel {
+      flex: 1;
+      min-width: 320px;
+      background: #161b22;
+      border-radius: 12px;
+      border: 1px solid #21262d;
+      display: flex;
+      flex-direction: column;
+      max-height: 75vh;
+    }
+    .log-header {
+      padding: 1rem;
+      border-bottom: 1px solid #21262d;
+      font-weight: 600;
+      font-size: 0.85rem;
+      color: #8b949e;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .log-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0.75rem;
+    }
+    .log-entry {
+      padding: 0.5rem 0.75rem;
+      margin-bottom: 0.4rem;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      animation: fadeSlideIn 0.3s ease;
+      border-left: 3px solid transparent;
+    }
+    .log-entry.system { background: rgba(88,166,255,0.08); border-left-color: #58a6ff; }
+    .log-entry.success { background: rgba(63,185,80,0.08); border-left-color: #3fb950; }
+    .log-entry.warning { background: rgba(210,153,34,0.08); border-left-color: #d29922; }
+    .log-entry.message { background: rgba(188,140,255,0.08); border-left-color: #bc8cff; }
+    .log-entry .time { color: #484f58; font-size: 0.7rem; margin-right: 0.5rem; }
+    .log-entry .text { color: #c9d1d9; }
+    .log-entry .highlight { color: #58a6ff; font-weight: 600; }
+
+    @keyframes fadeSlideIn {
+      from { opacity: 0; transform: translateY(-5px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Flow nodes */
+    .flow-step {
+      display: flex;
+      align-items: stretch;
+      opacity: 0.3;
+      transition: opacity 0.4s, transform 0.3s;
+      transform: scale(0.98);
+    }
+    .flow-step.active {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .flow-step.done {
+      opacity: 0.7;
+      transform: scale(1);
+    }
+
+    .flow-connector {
+      width: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+    }
+    .flow-dot {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      border: 2px solid #30363d;
+      background: #0d1117;
+      z-index: 1;
+      transition: all 0.3s;
+      flex-shrink: 0;
+    }
+    .flow-step.active .flow-dot { border-color: #58a6ff; background: #58a6ff; box-shadow: 0 0 12px rgba(88,166,255,0.5); }
+    .flow-step.done .flow-dot { border-color: #3fb950; background: #3fb950; }
+    .flow-line {
+      width: 2px;
+      flex: 1;
+      background: #21262d;
+      transition: background 0.3s;
+    }
+    .flow-step.done .flow-line { background: #3fb950; }
+
+    .flow-card {
+      flex: 1;
+      background: #161b22;
+      border: 1px solid #21262d;
+      border-radius: 10px;
+      padding: 0.9rem 1.1rem;
+      margin: 0.3rem 0;
+      transition: all 0.3s;
+    }
+    .flow-step.active .flow-card { border-color: #58a6ff; box-shadow: 0 0 20px rgba(88,166,255,0.1); }
+    .flow-step.done .flow-card { border-color: #238636; }
+
+    .flow-card .label {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #8b949e;
+      margin-bottom: 0.2rem;
+    }
+    .flow-card .title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 0.2rem;
+    }
+    .flow-card .desc {
+      font-size: 0.75rem;
+      color: #8b949e;
+      line-height: 1.4;
+    }
+
+    .flow-card .title.google { color: #4285f4; }
+    .flow-card .title.n8n { color: #58a6ff; }
+    .flow-card .title.sheets { color: #34a853; }
+    .flow-card .title.twilio { color: #f22f46; }
+    .flow-card .title.team { color: #d29922; }
+    .flow-card .title.confirm { color: #3fb950; }
+
+    .branch-label {
+      text-align: center;
+      padding: 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #8b949e;
+    }
+    .branch-label.zelle { color: #3fb950; }
+    .branch-label.cash { color: #d29922; }
+
+    /* Sheet preview */
+    .sheet-preview {
+      margin-top: 1rem;
+      background: #0d1117;
+      border-radius: 8px;
+      border: 1px solid #21262d;
+      overflow: hidden;
+      font-size: 0.7rem;
+    }
+    .sheet-preview .tab-bar {
+      display: flex;
+      gap: 0;
+      background: #161b22;
+      border-bottom: 1px solid #21262d;
+    }
+    .sheet-preview .tab {
+      padding: 0.4rem 0.8rem;
+      color: #8b949e;
+      font-size: 0.7rem;
+      border-right: 1px solid #21262d;
+    }
+    .sheet-preview .tab.active { color: #3fb950; background: #0d1117; border-bottom: 2px solid #3fb950; }
+    .sheet-preview table { width: 100%; border-collapse: collapse; }
+    .sheet-preview th { padding: 0.3rem 0.5rem; text-align: left; color: #58a6ff; border-bottom: 1px solid #21262d; background: #161b22; font-weight: 600; white-space: nowrap; }
+    .sheet-preview td { padding: 0.3rem 0.5rem; border-bottom: 1px solid #21262d; color: #8b949e; white-space: nowrap; }
+    .sheet-preview td.status { font-weight: 600; }
+    .sheet-preview td.status.pending { color: #d29922; }
+    .sheet-preview td.status.verified { color: #58a6ff; }
+    .sheet-preview td.status.confirmed { color: #3fb950; }
+
+    .whatsapp-bubble {
+      display: none;
+      margin-top: 0.75rem;
+      background: #1c2333;
+      border-radius: 0 12px 12px 12px;
+      padding: 0.75rem 1rem;
+      font-size: 0.8rem;
+      line-height: 1.5;
+      border-left: 3px solid #25D366;
+      color: #c9d1d9;
+      animation: fadeSlideIn 0.3s ease;
+    }
+    .whatsapp-bubble.visible { display: block; }
+    .whatsapp-bubble .wa-icon { color: #25D366; font-weight: 600; margin-bottom: 0.3rem; font-size: 0.7rem; }
+
+    .speed-label { color: #484f58; font-size: 0.75rem; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Rangtal Garba — Workflow Simulation</h1>
+  <p>Watch the full registration flow step-by-step</p>
+</div>
+
+<div class="controls">
+  <button class="btn active" onclick="selectScenario('zelle')">Zelle Payment</button>
+  <button class="btn" onclick="selectScenario('cash')">Cash Payment</button>
+  <span style="color: #30363d; padding: 0.6rem 0;">|</span>
+  <button class="btn go" onclick="startSimulation()">&#9654; Run Simulation</button>
+  <button class="btn reset" onclick="resetSimulation()">Reset</button>
+  <span class="speed-label" style="display:flex;align-items:center;gap:0.4rem;">
+    Speed: <input type="range" id="speed" min="1" max="5" value="3" style="width:80px;accent-color:#58a6ff;">
+  </span>
+</div>
+
+<div class="simulation">
+  <div class="flow-panel" id="flowPanel"></div>
+  <div class="log-panel">
+    <div class="log-header">
+      <span>Event Log</span>
+      <span id="logCount" style="color:#484f58;">0 events</span>
+    </div>
+    <div class="log-body" id="logBody"></div>
+
+    <div id="sheetPreview" class="sheet-preview" style="margin:0.75rem;display:none;">
+      <div class="tab-bar">
+        <div class="tab active" id="tabPending">Pending Leads</div>
+        <div class="tab" id="tabConfirmed">Confirmed Leads</div>
+      </div>
+      <table id="sheetTable"></table>
+    </div>
+
+    <div id="whatsappArea" style="padding: 0 0.75rem 0.75rem;"></div>
+  </div>
+</div>
+
+<script>
+let scenario = 'zelle';
+let running = false;
+let stepIndex = 0;
+let logCount = 0;
+
+const zelleSteps = [
+  { label: 'Google Form', title: 'Customer Submits Registration', desc: 'Priya Shah fills out the Garba registration form with Zelle as payment method', titleClass: 'google',
+    log: { type: 'system', text: '<span class="highlight">Form Submitted</span> — Priya Shah, +14085551234, Zelle, $50, April 2026' } },
+
+  { label: 'Apps Script', title: 'Webhook Fires to n8n', desc: 'onFormSubmit() sends JSON payload to n8n Cloud webhook endpoint', titleClass: 'google',
+    log: { type: 'system', text: 'Apps Script → POST /webhook/lead-intake — payload: {name, phone, email, amount, paymentMethod, period}' } },
+
+  { label: 'WF1 — Code Node', title: 'Generate Lead ID & Token', desc: 'Lead ID: RG-20260415-001 | Token: a3f8c7e2-...', titleClass: 'n8n',
+    log: { type: 'system', text: 'Generated <span class="highlight">RG-20260415-001</span> + approval token UUID' } },
+
+  { label: 'WF1 — Duplicate Check', title: 'Check for Existing Registration', desc: 'Search Pending Leads for phone + period combo → No match found', titleClass: 'n8n',
+    log: { type: 'success', text: 'Duplicate check passed — new registration' } },
+
+  { label: 'WF1 — Google Sheets', title: 'Write to Pending Leads', desc: 'Append row: RG-20260415-001 | Priya Shah | Status: NEW_LEAD', titleClass: 'sheets',
+    log: { type: 'success', text: 'Row appended to <span class="highlight">Pending Leads</span> — Status: NEW_LEAD' },
+    sheet: { action: 'addPending', data: { id: 'RG-20260415-001', name: 'Priya Shah', phone: '+14085551234', method: 'Zelle', amount: '$50', status: 'NEW_LEAD', statusClass: 'pending' } } },
+
+  { label: 'WF1 — Switch Node', title: 'Branch: Zelle Payment', desc: 'Payment Method = Zelle → Route to Zelle branch', titleClass: 'n8n',
+    log: { type: 'system', text: 'Switch → <span class="highlight">Zelle branch</span>' } },
+
+  { label: 'WF1 — Google Sheets', title: 'Update Status', desc: 'Status → PENDING_ZELLE_VERIFICATION', titleClass: 'sheets',
+    log: { type: 'warning', text: 'Status updated → <span class="highlight">PENDING_ZELLE_VERIFICATION</span>' },
+    sheet: { action: 'updateStatus', status: 'PENDING_ZELLE_VERIFICATION', statusClass: 'pending' } },
+
+  { label: 'WF1 — Twilio', title: 'Send Team Notification', desc: 'WhatsApp to team: "New Zelle registration: Priya Shah — $50. Approve: [link]"', titleClass: 'twilio',
+    log: { type: 'message', text: 'WhatsApp sent to <span class="highlight">team</span>' },
+    whatsapp: { to: 'Team Member', text: 'New Zelle registration: Priya Shah — $50 for April 2026. Check your bank and approve: https://n8n.cloud/webhook/approve?leadId=RG-20260415-001&token=a3f8c7e2...' } },
+
+  { label: 'Waiting...', title: 'Team Checks Bank App', desc: 'Team member verifies Zelle payment was received in bank account', titleClass: 'team',
+    log: { type: 'warning', text: 'Waiting for team to verify payment in bank app...' } },
+
+  { label: 'Team Action', title: 'Team Clicks Approve Link', desc: 'GET /webhook/approve?leadId=RG-20260415-001&token=a3f8c7e2...', titleClass: 'team',
+    log: { type: 'system', text: 'Approve link clicked → <span class="highlight">WF2 triggered</span>' } },
+
+  { label: 'WF2 — Validation', title: 'Validate Token', desc: 'Token matches stored value. Status is not CONFIRMED. Proceeding.', titleClass: 'n8n',
+    log: { type: 'success', text: 'Token validated — lead found, not yet confirmed' } },
+
+  { label: 'WF2 — Google Sheets', title: 'Mark as Paid & Verified', desc: 'Payment Verified: Yes | Approved By: Team | Status: PAID_VERIFIED', titleClass: 'sheets',
+    log: { type: 'success', text: 'Payment verified → <span class="highlight">PAID_VERIFIED</span>' },
+    sheet: { action: 'updateStatus', status: 'PAID_VERIFIED', statusClass: 'verified' } },
+
+  { label: 'WF2 — Twilio', title: 'Send Payment Confirmation', desc: 'WhatsApp to Priya: "We\'ve received your Zelle payment of $50..."', titleClass: 'twilio',
+    log: { type: 'message', text: 'Payment confirmation WhatsApp sent to <span class="highlight">Priya Shah</span>' },
+    whatsapp: { to: 'Priya Shah', text: 'Hi Priya Shah, we\'ve received your Zelle payment of $50 for April 2026. Your registration is confirmed!' } },
+
+  { label: 'WF2 — Twilio', title: 'Send Onboarding Message', desc: 'WhatsApp to Priya: "Welcome to Rangtal Garba!..."', titleClass: 'twilio',
+    log: { type: 'message', text: 'Onboarding WhatsApp sent to <span class="highlight">Priya Shah</span>' },
+    whatsapp: { to: 'Priya Shah', text: 'Hi Priya Shah, welcome to Rangtal Garba! Your onboarding for April 2026 is complete. We\'ll share class schedule and details shortly. See you on the dance floor!' } },
+
+  { label: 'WF2 — Google Sheets', title: 'Append to Confirmed Leads', desc: 'New row in Confirmed Leads: RG-20260415-001 | CONFIRMED', titleClass: 'confirm',
+    log: { type: 'success', text: 'Appended to <span class="highlight">Confirmed Leads</span> sheet' },
+    sheet: { action: 'addConfirmed' } },
+
+  { label: 'WF2 — Final', title: 'Status → CONFIRMED', desc: 'Pending Leads updated. Success page returned to approver browser.', titleClass: 'confirm',
+    log: { type: 'success', text: 'Final status: <span class="highlight">CONFIRMED</span> — Success page shown to approver' },
+    sheet: { action: 'updateStatus', status: 'CONFIRMED', statusClass: 'confirmed' } },
+];
+
+const cashSteps = [
+  { label: 'Google Form', title: 'Customer Submits Registration', desc: 'Rahul Patel fills out the Garba registration form with Cash as payment method', titleClass: 'google',
+    log: { type: 'system', text: '<span class="highlight">Form Submitted</span> — Rahul Patel, +14085559876, Cash, $50, April 2026' } },
+
+  { label: 'Apps Script', title: 'Webhook Fires to n8n', desc: 'onFormSubmit() sends JSON payload to n8n Cloud webhook endpoint', titleClass: 'google',
+    log: { type: 'system', text: 'Apps Script → POST /webhook/lead-intake' } },
+
+  { label: 'WF1 — Code Node', title: 'Generate Lead ID', desc: 'Lead ID: RG-20260415-002 (no approval token needed for cash)', titleClass: 'n8n',
+    log: { type: 'system', text: 'Generated <span class="highlight">RG-20260415-002</span>' } },
+
+  { label: 'WF1 — Duplicate Check', title: 'Check for Existing Registration', desc: 'Search Pending Leads for phone + period combo → No match found', titleClass: 'n8n',
+    log: { type: 'success', text: 'Duplicate check passed — new registration' } },
+
+  { label: 'WF1 — Google Sheets', title: 'Write to Pending Leads', desc: 'Append row: RG-20260415-002 | Rahul Patel | Status: NEW_LEAD', titleClass: 'sheets',
+    log: { type: 'success', text: 'Row appended to <span class="highlight">Pending Leads</span> — Status: NEW_LEAD' },
+    sheet: { action: 'addPending', data: { id: 'RG-20260415-002', name: 'Rahul Patel', phone: '+14085559876', method: 'Cash', amount: '$50', status: 'NEW_LEAD', statusClass: 'pending' } } },
+
+  { label: 'WF1 — Switch Node', title: 'Branch: Cash Payment', desc: 'Payment Method = Cash → Route to Cash branch', titleClass: 'n8n',
+    log: { type: 'system', text: 'Switch → <span class="highlight">Cash branch</span>' } },
+
+  { label: 'WF1 — Google Sheets', title: 'Update Status', desc: 'Status → PENDING_CASH', titleClass: 'sheets',
+    log: { type: 'warning', text: 'Status updated → <span class="highlight">PENDING_CASH</span>' },
+    sheet: { action: 'updateStatus', status: 'PENDING_CASH', statusClass: 'pending' } },
+
+  { label: 'WF1 — Twilio', title: 'Send Cash Reminder', desc: 'WhatsApp to Rahul: "Your payment method is marked as cash..."', titleClass: 'twilio',
+    log: { type: 'message', text: 'Cash reminder WhatsApp sent to <span class="highlight">Rahul Patel</span>' },
+    whatsapp: { to: 'Rahul Patel', text: 'Hi Rahul Patel, thanks for registering for Rangtal Garba (April 2026)! Your payment method is marked as cash — $50. Please bring your payment to the next class. Questions? Reply to this message.' } },
+
+  { label: 'WF1 — Google Sheets', title: 'Mark Follow-up Sent', desc: 'Follow-up Sent: Yes | Status stays PENDING_CASH', titleClass: 'sheets',
+    log: { type: 'success', text: 'Follow-up Sent = Yes — lead stays in <span class="highlight">Pending Leads</span> only' },
+    sheet: { action: 'updateFollowup' } },
+
+  { label: 'WF1 — Done', title: 'Cash Flow Complete', desc: 'No confirmation yet. Lead stays pending until cash rules are defined.', titleClass: 'team',
+    log: { type: 'warning', text: 'Cash flow complete — no row in Confirmed Leads. Lead awaits manual resolution.' } },
+];
+
+let currentSteps = zelleSteps;
+let sheetData = { pending: null, confirmed: false, followup: false };
+
+function selectScenario(s) {
+  if (running) return;
+  scenario = s;
+  document.querySelectorAll('.controls .btn:not(.go):not(.reset)').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  currentSteps = s === 'zelle' ? zelleSteps : cashSteps;
+  resetSimulation();
+}
+
+function resetSimulation() {
+  running = false;
+  stepIndex = 0;
+  logCount = 0;
+  sheetData = { pending: null, confirmed: false, followup: false };
+  document.getElementById('logBody').innerHTML = '';
+  document.getElementById('logCount').textContent = '0 events';
+  document.getElementById('sheetPreview').style.display = 'none';
+  document.getElementById('whatsappArea').innerHTML = '';
+  renderFlow();
+}
+
+function renderFlow() {
+  const panel = document.getElementById('flowPanel');
+  panel.innerHTML = '';
+  currentSteps.forEach((step, i) => {
+    const isActive = i === stepIndex && running;
+    const isDone = i < stepIndex;
+    const cls = isActive ? 'active' : isDone ? 'done' : '';
+
+    panel.innerHTML += `
+      <div class="flow-step ${cls}" id="step-${i}">
+        <div class="flow-connector">
+          <div class="flow-dot"></div>
+          ${i < currentSteps.length - 1 ? '<div class="flow-line"></div>' : ''}
+        </div>
+        <div class="flow-card">
+          <div class="label">${step.label}</div>
+          <div class="title ${step.titleClass}">${step.title}</div>
+          <div class="desc">${step.desc}</div>
+        </div>
+      </div>
+    `;
+  });
+}
+
+function getDelay() {
+  const speed = document.getElementById('speed').value;
+  const delays = { 1: 2000, 2: 1500, 3: 1000, 4: 600, 5: 300 };
+  return delays[speed];
+}
+
+function addLog(entry) {
+  const body = document.getElementById('logBody');
+  const now = new Date();
+  const time = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const div = document.createElement('div');
+  div.className = `log-entry ${entry.type}`;
+  div.innerHTML = `<span class="time">${time}</span><span class="text">${entry.text}</span>`;
+  body.appendChild(div);
+  body.scrollTop = body.scrollHeight;
+  logCount++;
+  document.getElementById('logCount').textContent = `${logCount} events`;
+}
+
+function updateSheet(sheetAction) {
+  const preview = document.getElementById('sheetPreview');
+  preview.style.display = 'block';
+  const table = document.getElementById('sheetTable');
+
+  if (sheetAction.action === 'addPending') {
+    sheetData.pending = sheetAction.data;
+    renderPendingSheet();
+  } else if (sheetAction.action === 'updateStatus') {
+    if (sheetData.pending) {
+      sheetData.pending.status = sheetAction.status;
+      sheetData.pending.statusClass = sheetAction.statusClass;
+    }
+    renderPendingSheet();
+  } else if (sheetAction.action === 'addConfirmed') {
+    sheetData.confirmed = true;
+    document.getElementById('tabConfirmed').classList.add('active');
+    renderPendingSheet();
+  } else if (sheetAction.action === 'updateFollowup') {
+    sheetData.followup = true;
+    renderPendingSheet();
+  }
+}
+
+function renderPendingSheet() {
+  const table = document.getElementById('sheetTable');
+  if (!sheetData.pending) return;
+  const d = sheetData.pending;
+  let html = `
+    <tr><th>Lead ID</th><th>Name</th><th>Phone</th><th>Method</th><th>Amount</th><th>Status</th>${sheetData.followup ? '<th>Follow-up</th>' : ''}</tr>
+    <tr>
+      <td style="color:#58a6ff;font-family:monospace;">${d.id}</td>
+      <td style="color:#e6edf3;">${d.name}</td>
+      <td style="font-family:monospace;">${d.phone}</td>
+      <td>${d.method}</td>
+      <td>${d.amount}</td>
+      <td class="status ${d.statusClass}">${d.status}</td>
+      ${sheetData.followup ? '<td style="color:#3fb950;">Yes</td>' : ''}
+    </tr>
+  `;
+  if (sheetData.confirmed) {
+    html += `
+      <tr><td colspan="${sheetData.followup ? 7 : 6}" style="padding:0.6rem 0.5rem;color:#3fb950;font-weight:600;border-top:2px solid #21262d;">Confirmed Leads Tab</td></tr>
+      <tr><th>Lead ID</th><th>Name</th><th>Method</th><th>Amount</th><th>Status</th><th colspan="${sheetData.followup ? 2 : 1}">Confirmed By</th></tr>
+      <tr>
+        <td style="color:#58a6ff;font-family:monospace;">${d.id}</td>
+        <td style="color:#e6edf3;">${d.name}</td>
+        <td>Zelle</td>
+        <td>${d.amount}</td>
+        <td class="status confirmed">CONFIRMED</td>
+        <td colspan="${sheetData.followup ? 2 : 1}">Team</td>
+      </tr>
+    `;
+  }
+  table.innerHTML = html;
+}
+
+function showWhatsApp(wa) {
+  const area = document.getElementById('whatsappArea');
+  area.innerHTML = `
+    <div class="whatsapp-bubble visible">
+      <div class="wa-icon">WhatsApp → ${wa.to}</div>
+      ${wa.text}
+    </div>
+  `;
+}
+
+async function startSimulation() {
+  if (running) return;
+  resetSimulation();
+  running = true;
+
+  for (let i = 0; i < currentSteps.length; i++) {
+    if (!running) break;
+    stepIndex = i;
+    renderFlow();
+
+    const step = currentSteps[i];
+    addLog(step.log);
+
+    if (step.sheet) updateSheet(step.sheet);
+    if (step.whatsapp) showWhatsApp(step.whatsapp);
+
+    // Scroll active step into view
+    const el = document.getElementById(`step-${i}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    await new Promise(r => setTimeout(r, getDelay()));
+  }
+
+  stepIndex = currentSteps.length;
+  renderFlow();
+  running = false;
+
+  addLog({ type: 'success', text: scenario === 'zelle'
+    ? '<span class="highlight">SIMULATION COMPLETE</span> — Zelle registration fully confirmed and onboarded'
+    : '<span class="highlight">SIMULATION COMPLETE</span> — Cash registration recorded, reminder sent, awaiting payment'
+  });
+}
+
+// Initial render
+renderFlow();
+</script>
+
+</body>
+</html>
