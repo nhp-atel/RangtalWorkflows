@@ -1,0 +1,500 @@
+{
+  "name": "WF2 - Zelle Approval",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "approve",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000001",
+      "name": "Webhook",
+      "type": "@n8n/n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [260, 300],
+      "webhookId": "approve-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const query = $input.first().json.query || {};\nconst leadId = query.leadId || '';\nconst token = query.token || '';\n\nif (!leadId || !token) {\n  return [{ json: { valid: false, reason: 'missing_params' } }];\n}\n\nreturn [{ json: { leadId, token, valid: true } }];"
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000002",
+      "name": "Extract Query Params",
+      "type": "@n8n/n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "byName",
+          "value": "Pending Leads"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "Lead ID",
+              "lookupValue": "={{ $json.leadId }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000003",
+      "name": "Lookup Lead",
+      "type": "@n8n/n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [700, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst lead = items.length > 0 ? items[0].json : null;\nconst queryData = $('Extract Query Params').first().json;\n\nif (!lead || !lead['Lead ID']) {\n  return [{ json: { action: 'error', reason: 'lead_not_found' } }];\n}\n\nif (lead['Status'] === 'CONFIRMED') {\n  return [{ json: { action: 'already_done', leadId: lead['Lead ID'] } }];\n}\n\nif (lead['Approval Token'] !== queryData.token) {\n  return [{ json: { action: 'error', reason: 'invalid_token' } }];\n}\n\nreturn [{\n  json: {\n    action: 'approve',\n    leadId: lead['Lead ID'],\n    name: lead['Name'],\n    phone: lead['Phone'],\n    email: lead['Email'],\n    amount: lead['Amount'],\n    paymentMethod: lead['Payment Method'],\n    subscriptionPeriod: lead['Subscription Period']\n  }\n}];"
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000004",
+      "name": "Validate Token & Status",
+      "type": "@n8n/n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [920, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "approve",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputLabel": "approve"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "error",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputLabel": "error"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "already_done",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputLabel": "already_done"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000005",
+      "name": "Action Router",
+      "type": "@n8n/n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1140, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "byName",
+          "value": "Pending Leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Lead ID": "={{ $json.leadId }}",
+            "Payment Verified": "Yes",
+            "Approved By": "Team",
+            "Status": "PAID_VERIFIED"
+          },
+          "matchingColumns": ["Lead ID"],
+          "schema": [
+            { "id": "Lead ID", "displayName": "Lead ID", "required": false, "defaultMatch": true, "canBeUsedToMatch": true, "type": "string" },
+            { "id": "Payment Verified", "displayName": "Payment Verified", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Approved By", "displayName": "Approved By", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000006",
+      "name": "Mark Paid Verified",
+      "type": "@n8n/n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1400, 100]
+    },
+    {
+      "parameters": {
+        "from": "",
+        "to": "=whatsapp:{{ $json.phone }}",
+        "body": "=Hi {{ $json.name }}, we've received your Zelle payment of {{ $json.amount }} for {{ $json.subscriptionPeriod }}. Your registration is confirmed!",
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000007",
+      "name": "Send Payment Confirmation",
+      "type": "@n8n/n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1620, 100]
+    },
+    {
+      "parameters": {
+        "from": "",
+        "to": "=whatsapp:{{ $json.phone }}",
+        "body": "=Hi {{ $json.name }}, welcome to Rangtal Garba! Your onboarding for {{ $json.subscriptionPeriod }} is complete. We'll share class schedule and details shortly. See you on the dance floor!",
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000008",
+      "name": "Send Onboarding",
+      "type": "@n8n/n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1840, 100]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "byName",
+          "value": "Pending Leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Lead ID": "={{ $json.leadId }}",
+            "Payment Confirmation Sent": "Yes",
+            "Onboarding Sent": "Yes",
+            "Status": "CONFIRMED",
+            "Confirmed Timestamp": "={{ new Date().toISOString().replace('T', ' ').slice(0, 19) }}"
+          },
+          "matchingColumns": ["Lead ID"],
+          "schema": [
+            { "id": "Lead ID", "displayName": "Lead ID", "required": false, "defaultMatch": true, "canBeUsedToMatch": true, "type": "string" },
+            { "id": "Payment Confirmation Sent", "displayName": "Payment Confirmation Sent", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Onboarding Sent", "displayName": "Onboarding Sent", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Confirmed Timestamp", "displayName": "Confirmed Timestamp", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000009",
+      "name": "Update Messages Sent",
+      "type": "@n8n/n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2060, 100]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "list",
+          "value": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "byName",
+          "value": "Confirmed Leads"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Lead ID": "={{ $json.leadId }}",
+            "Name": "={{ $json.name }}",
+            "Phone": "={{ $json.phone }}",
+            "Email": "={{ $json.email }}",
+            "Amount": "={{ $json.amount }}",
+            "Payment Method": "={{ $json.paymentMethod }}",
+            "Subscription Period": "={{ $json.subscriptionPeriod }}",
+            "Confirmed Timestamp": "={{ new Date().toISOString().replace('T', ' ').slice(0, 19) }}",
+            "Confirmed By": "Team",
+            "Status": "CONFIRMED"
+          },
+          "matchingColumns": [],
+          "schema": [
+            { "id": "Lead ID", "displayName": "Lead ID", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Name", "displayName": "Name", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Phone", "displayName": "Phone", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Email", "displayName": "Email", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Amount", "displayName": "Amount", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Payment Method", "displayName": "Payment Method", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Subscription Period", "displayName": "Subscription Period", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Confirmed Timestamp", "displayName": "Confirmed Timestamp", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Confirmed By", "displayName": "Confirmed By", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" },
+            { "id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "canBeUsedToMatch": false, "type": "string" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-00000000000a",
+      "name": "Append to Confirmed Leads",
+      "type": "@n8n/n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [2280, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"><title>Payment Approved</title><style>body{font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f0fdf4;color:#166534}.card{text-align:center;padding:3rem;max-width:400px}.icon{font-size:4rem;margin-bottom:1rem}h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#4b5563;line-height:1.6}</style></head><body><div class=\"card\"><div class=\"icon\">&#x2705;</div><h1>Payment Approved</h1><p>The Zelle payment has been verified. Confirmation and onboarding messages have been sent to the customer via WhatsApp.</p></div></body></html>",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html"
+              }
+            ]
+          }
+        }
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-00000000000b",
+      "name": "Success Page",
+      "type": "@n8n/n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2500, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"><title>Approval Error</title><style>body{font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#fef2f2;color:#991b1b}.card{text-align:center;padding:3rem;max-width:400px}.icon{font-size:4rem;margin-bottom:1rem}h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#4b5563;line-height:1.6}</style></head><body><div class=\"card\"><div class=\"icon\">&#x274C;</div><h1>Invalid Approval Link</h1><p>This approval link is invalid or has expired. Please check the Pending Leads sheet directly or contact the admin.</p></div></body></html>",
+        "options": {
+          "responseCode": 400,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html"
+              }
+            ]
+          }
+        }
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-00000000000c",
+      "name": "Error Page",
+      "type": "@n8n/n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1400, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "=<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1.0\"><title>Already Approved</title><style>body{font-family:-apple-system,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#eff6ff;color:#1e40af}.card{text-align:center;padding:3rem;max-width:400px}.icon{font-size:4rem;margin-bottom:1rem}h1{font-size:1.5rem;margin-bottom:.5rem}p{color:#4b5563;line-height:1.6}</style></head><body><div class=\"card\"><div class=\"icon\">&#x2139;&#xFE0F;</div><h1>Already Approved</h1><p>This payment has already been approved and the customer has been notified. No further action needed.</p></div></body></html>",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/html"
+              }
+            ]
+          }
+        }
+      },
+      "id": "a1b2c3d4-1111-4aaa-bbbb-00000000000d",
+      "name": "Already Done Page",
+      "type": "@n8n/n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1400, 600]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extract Query Params",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Query Params": {
+      "main": [
+        [
+          {
+            "node": "Lookup Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup Lead": {
+      "main": [
+        [
+          {
+            "node": "Validate Token & Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Token & Status": {
+      "main": [
+        [
+          {
+            "node": "Action Router",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Action Router": {
+      "main": [
+        [
+          {
+            "node": "Mark Paid Verified",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Page",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Already Done Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mark Paid Verified": {
+      "main": [
+        [
+          {
+            "node": "Send Payment Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Payment Confirmation": {
+      "main": [
+        [
+          {
+            "node": "Send Onboarding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Onboarding": {
+      "main": [
+        [
+          {
+            "node": "Update Messages Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Messages Sent": {
+      "main": [
+        [
+          {
+            "node": "Append to Confirmed Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Confirmed Leads": {
+      "main": [
+        [
+          {
+            "node": "Success Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-04-15T00:00:00.000Z",
+  "versionId": "1"
+}

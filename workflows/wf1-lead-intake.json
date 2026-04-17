@@ -1,0 +1,448 @@
+{
+  "name": "WF1 - Lead Intake",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "lead-intake",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-b111-000000000001",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "lead-intake-webhook"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');\nconst seq = String(now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()).padStart(3, '0');\nconst leadId = `RG-${dateStr}-${seq}`;\n\nconst token = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n  const r = Math.random() * 16 | 0;\n  const v = c === 'x' ? r : (r & 0x3 | 0x8);\n  return v.toString(16);\n});\n\nconst timestamp = now.toISOString().replace('T', ' ').slice(0, 19);\nconst body = $input.first().json.body || $input.first().json;\n\nreturn [{\n  json: {\n    leadId,\n    timestamp,\n    name: body['Full Name'] || '',\n    phone: body['Phone'] || '',\n    email: body['Email'] || '',\n    paymentMethod: body['Payment Method'] || '',\n    amount: body['Amount'] || '',\n    subscriptionPeriod: body['Subscription Period'] || '',\n    notes: body['Notes'] || '',\n    approvalToken: token,\n    status: 'NEW_LEAD'\n  }\n}];"
+      },
+      "id": "a1b2c3d4-1111-4aaa-b111-000000000002",
+      "name": "Generate Lead ID & Token",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [500, 300]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "-- SELECT SPREADSHEET --"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Pending Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Lead ID": "={{ $json.leadId }}",
+            "Timestamp": "={{ $json.timestamp }}",
+            "Name": "={{ $json.name }}",
+            "Phone": "={{ $json.phone }}",
+            "Email": "={{ $json.email }}",
+            "Payment Method": "={{ $json.paymentMethod }}",
+            "Amount": "={{ $json.amount }}",
+            "Subscription Period": "={{ $json.subscriptionPeriod }}",
+            "Status": "NEW_LEAD",
+            "Payment Verified": "No",
+            "Approval Token": "={{ $json.approvalToken }}",
+            "Payment Confirmation Sent": "No",
+            "Onboarding Sent": "No",
+            "Follow-up Sent": "No",
+            "Notes": "={{ $json.notes }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {"id": "Lead ID", "displayName": "Lead ID", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Timestamp", "displayName": "Timestamp", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Name", "displayName": "Name", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Phone", "displayName": "Phone", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Email", "displayName": "Email", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Payment Method", "displayName": "Payment Method", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Amount", "displayName": "Amount", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Subscription Period", "displayName": "Subscription Period", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Payment Verified", "displayName": "Payment Verified", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Approval Token", "displayName": "Approval Token", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Payment Confirmation Sent", "displayName": "Payment Confirmation Sent", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Onboarding Sent", "displayName": "Onboarding Sent", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Follow-up Sent", "displayName": "Follow-up Sent", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Notes", "displayName": "Notes", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true}
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-b111-000000000003",
+      "name": "Write to Pending Leads",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [750, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "-- SELECT CREDENTIAL --"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.paymentMethod }}",
+                    "rightValue": "Zelle",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Zelle"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict"
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.paymentMethod }}",
+                    "rightValue": "Cash",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Cash"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-b111-000000000004",
+      "name": "Payment Method Branch",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [1000, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "-- SELECT SPREADSHEET --"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Pending Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Lead ID": "={{ $json.leadId }}",
+            "Status": "PENDING_ZELLE_VERIFICATION"
+          },
+          "matchingColumns": ["Lead ID"],
+          "schema": [
+            {"id": "Lead ID", "displayName": "Lead ID", "required": false, "defaultMatch": true, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false}
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-b111-000000000005",
+      "name": "Update Status Zelle",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1300, 150],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "-- SELECT CREDENTIAL --"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "",
+        "to": "",
+        "message": "=New Zelle registration: {{ $json.name }} — {{ $json.amount }} for {{ $json.subscriptionPeriod }}. Check your bank and approve: YOUR_N8N_URL/webhook/approve?leadId={{ $json.leadId }}&token={{ $json.approvalToken }}"
+      },
+      "id": "a1b2c3d4-1111-4aaa-b111-000000000006",
+      "name": "Send Team Notification",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1550, 150],
+      "credentials": {
+        "twilioApi": {
+          "id": "",
+          "name": "-- SELECT CREDENTIAL --"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\":\"ok\",\"leadId\":\"{{ $json.leadId }}\",\"message\":\"Zelle registration received\"}"
+      },
+      "id": "a1b2c3d4-1111-4aaa-b111-000000000007",
+      "name": "Respond Zelle",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [1800, 150]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "-- SELECT SPREADSHEET --"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Pending Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Lead ID": "={{ $json.leadId }}",
+            "Status": "PENDING_CASH"
+          },
+          "matchingColumns": ["Lead ID"],
+          "schema": [
+            {"id": "Lead ID", "displayName": "Lead ID", "required": false, "defaultMatch": true, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false}
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-b111-000000000008",
+      "name": "Update Status Cash",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1300, 450],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "-- SELECT CREDENTIAL --"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "from": "",
+        "to": "=whatsapp:{{ $json.phone }}",
+        "message": "=Hi {{ $json.name }}, thanks for registering for Rangtal Garba ({{ $json.subscriptionPeriod }})! Your payment method is marked as cash — {{ $json.amount }}. Please bring your payment to the next class. Questions? Reply to this message."
+      },
+      "id": "a1b2c3d4-1111-4aaa-b111-000000000009",
+      "name": "Send Cash Reminder",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1550, 450],
+      "credentials": {
+        "twilioApi": {
+          "id": "",
+          "name": "-- SELECT CREDENTIAL --"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "-- SELECT SPREADSHEET --"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Pending Leads",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Lead ID": "={{ $json.leadId }}",
+            "Follow-up Sent": "Yes"
+          },
+          "matchingColumns": ["Lead ID"],
+          "schema": [
+            {"id": "Lead ID", "displayName": "Lead ID", "required": false, "defaultMatch": true, "display": true, "type": "string", "canBeUsedToMatch": true},
+            {"id": "Follow-up Sent", "displayName": "Follow-up Sent", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": false}
+          ]
+        },
+        "options": {}
+      },
+      "id": "a1b2c3d4-1111-4aaa-b111-000000000010",
+      "name": "Update Follow-up Sent",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [1800, 450],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "-- SELECT CREDENTIAL --"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\":\"ok\",\"leadId\":\"{{ $json.leadId }}\",\"message\":\"Cash registration received\"}"
+      },
+      "id": "a1b2c3d4-1111-4aaa-b111-000000000011",
+      "name": "Respond Cash",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [2050, 450]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Generate Lead ID & Token",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Lead ID & Token": {
+      "main": [
+        [
+          {
+            "node": "Write to Pending Leads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to Pending Leads": {
+      "main": [
+        [
+          {
+            "node": "Payment Method Branch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Payment Method Branch": {
+      "main": [
+        [
+          {
+            "node": "Update Status Zelle",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Status Cash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status Zelle": {
+      "main": [
+        [
+          {
+            "node": "Send Team Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Team Notification": {
+      "main": [
+        [
+          {
+            "node": "Respond Zelle",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Status Cash": {
+      "main": [
+        [
+          {
+            "node": "Send Cash Reminder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Cash Reminder": {
+      "main": [
+        [
+          {
+            "node": "Update Follow-up Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Follow-up Sent": {
+      "main": [
+        [
+          {
+            "node": "Respond Cash",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2026-04-15T00:00:00.000Z",
+  "versionId": "1"
+}
