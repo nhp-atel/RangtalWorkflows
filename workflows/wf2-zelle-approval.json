@@ -8,22 +8,22 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000001",
+      "id": "b1000001-0001-4000-8000-000000000001",
       "name": "Webhook",
-      "type": "@n8n/n8n-nodes-base.webhook",
+      "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [260, 300],
+      "position": [240, 400],
       "webhookId": "approve-webhook"
     },
     {
       "parameters": {
         "jsCode": "const query = $input.first().json.query || {};\nconst leadId = query.leadId || '';\nconst token = query.token || '';\n\nif (!leadId || !token) {\n  return [{ json: { valid: false, reason: 'missing_params' } }];\n}\n\nreturn [{ json: { leadId, token, valid: true } }];"
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000002",
+      "id": "b1000001-0001-4000-8000-000000000002",
       "name": "Extract Query Params",
-      "type": "@n8n/n8n-nodes-base.code",
+      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 300]
+      "position": [460, 400]
     },
     {
       "parameters": {
@@ -48,21 +48,21 @@
         },
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000003",
+      "id": "b1000001-0001-4000-8000-000000000003",
       "name": "Lookup Lead",
-      "type": "@n8n/n8n-nodes-base.googleSheets",
+      "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [700, 300]
+      "position": [680, 400]
     },
     {
       "parameters": {
         "jsCode": "const items = $input.all();\nconst lead = items.length > 0 ? items[0].json : null;\nconst queryData = $('Extract Query Params').first().json;\n\nif (!lead || !lead['Lead ID']) {\n  return [{ json: { action: 'error', reason: 'lead_not_found' } }];\n}\n\nif (lead['Status'] === 'CONFIRMED') {\n  return [{ json: { action: 'already_done', leadId: lead['Lead ID'] } }];\n}\n\nif (lead['Approval Token'] !== queryData.token) {\n  return [{ json: { action: 'error', reason: 'invalid_token' } }];\n}\n\nreturn [{\n  json: {\n    action: 'approve',\n    leadId: lead['Lead ID'],\n    name: lead['Name'],\n    phone: lead['Phone'],\n    email: lead['Email'],\n    amount: lead['Amount'],\n    paymentMethod: lead['Payment Method'],\n    subscriptionPeriod: lead['Subscription Period']\n  }\n}];"
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000004",
+      "id": "b1000001-0001-4000-8000-000000000004",
       "name": "Validate Token & Status",
-      "type": "@n8n/n8n-nodes-base.code",
+      "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [920, 300]
+      "position": [900, 400]
     },
     {
       "parameters": {
@@ -88,7 +88,7 @@
                 "combinator": "and"
               },
               "renameOutput": true,
-              "outputLabel": "approve"
+              "outputLabel": "Approve"
             },
             {
               "conditions": {
@@ -110,7 +110,7 @@
                 "combinator": "and"
               },
               "renameOutput": true,
-              "outputLabel": "error"
+              "outputLabel": "Error"
             },
             {
               "conditions": {
@@ -132,17 +132,17 @@
                 "combinator": "and"
               },
               "renameOutput": true,
-              "outputLabel": "already_done"
+              "outputLabel": "Already Done"
             }
           ]
         },
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000005",
+      "id": "b1000001-0001-4000-8000-000000000005",
       "name": "Action Router",
-      "type": "@n8n/n8n-nodes-base.switch",
+      "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
-      "position": [1140, 300]
+      "position": [1120, 400]
     },
     {
       "parameters": {
@@ -175,11 +175,11 @@
         },
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000006",
+      "id": "b1000001-0001-4000-8000-000000000006",
       "name": "Mark Paid Verified",
-      "type": "@n8n/n8n-nodes-base.googleSheets",
+      "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [1400, 100]
+      "position": [1380, 200]
     },
     {
       "parameters": {
@@ -188,11 +188,11 @@
         "body": "=Hi {{ $json.name }}, we've received your Zelle payment of {{ $json.amount }} for {{ $json.subscriptionPeriod }}. Your registration is confirmed!",
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000007",
+      "id": "b1000001-0001-4000-8000-000000000007",
       "name": "Send Payment Confirmation",
-      "type": "@n8n/n8n-nodes-base.twilio",
+      "type": "n8n-nodes-base.twilio",
       "typeVersion": 1,
-      "position": [1620, 100]
+      "position": [1600, 200]
     },
     {
       "parameters": {
@@ -201,11 +201,11 @@
         "body": "=Hi {{ $json.name }}, welcome to Rangtal Garba! Your onboarding for {{ $json.subscriptionPeriod }} is complete. We'll share class schedule and details shortly. See you on the dance floor!",
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000008",
+      "id": "b1000001-0001-4000-8000-000000000008",
       "name": "Send Onboarding",
-      "type": "@n8n/n8n-nodes-base.twilio",
+      "type": "n8n-nodes-base.twilio",
       "typeVersion": 1,
-      "position": [1840, 100]
+      "position": [1380, 60]
     },
     {
       "parameters": {
@@ -240,11 +240,11 @@
         },
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-000000000009",
+      "id": "b1000001-0001-4000-8000-000000000009",
       "name": "Update Messages Sent",
-      "type": "@n8n/n8n-nodes-base.googleSheets",
+      "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [2060, 100]
+      "position": [1600, 60]
     },
     {
       "parameters": {
@@ -289,11 +289,11 @@
         },
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-00000000000a",
+      "id": "b1000001-0001-4000-8000-00000000000a",
       "name": "Append to Confirmed Leads",
-      "type": "@n8n/n8n-nodes-base.googleSheets",
+      "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [2280, 100]
+      "position": [1380, -80]
     },
     {
       "parameters": {
@@ -311,11 +311,11 @@
           }
         }
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-00000000000b",
+      "id": "b1000001-0001-4000-8000-00000000000b",
       "name": "Success Page",
-      "type": "@n8n/n8n-nodes-base.respondToWebhook",
+      "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2500, 100]
+      "position": [1600, -80]
     },
     {
       "parameters": {
@@ -333,11 +333,11 @@
           }
         }
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-00000000000c",
+      "id": "b1000001-0001-4000-8000-00000000000c",
       "name": "Error Page",
-      "type": "@n8n/n8n-nodes-base.respondToWebhook",
+      "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1400, 400]
+      "position": [1380, 400]
     },
     {
       "parameters": {
@@ -355,135 +355,87 @@
           }
         }
       },
-      "id": "a1b2c3d4-1111-4aaa-bbbb-00000000000d",
+      "id": "b1000001-0001-4000-8000-00000000000d",
       "name": "Already Done Page",
-      "type": "@n8n/n8n-nodes-base.respondToWebhook",
+      "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1400, 600]
+      "position": [1380, 600]
     }
   ],
   "connections": {
     "Webhook": {
       "main": [
         [
-          {
-            "node": "Extract Query Params",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Extract Query Params", "type": "main", "index": 0 }
         ]
       ]
     },
     "Extract Query Params": {
       "main": [
         [
-          {
-            "node": "Lookup Lead",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Lookup Lead", "type": "main", "index": 0 }
         ]
       ]
     },
     "Lookup Lead": {
       "main": [
         [
-          {
-            "node": "Validate Token & Status",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Validate Token & Status", "type": "main", "index": 0 }
         ]
       ]
     },
     "Validate Token & Status": {
       "main": [
         [
-          {
-            "node": "Action Router",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Action Router", "type": "main", "index": 0 }
         ]
       ]
     },
     "Action Router": {
       "main": [
         [
-          {
-            "node": "Mark Paid Verified",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Mark Paid Verified", "type": "main", "index": 0 }
         ],
         [
-          {
-            "node": "Error Page",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Error Page", "type": "main", "index": 0 }
         ],
         [
-          {
-            "node": "Already Done Page",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Already Done Page", "type": "main", "index": 0 }
         ]
       ]
     },
     "Mark Paid Verified": {
       "main": [
         [
-          {
-            "node": "Send Payment Confirmation",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Send Payment Confirmation", "type": "main", "index": 0 }
         ]
       ]
     },
     "Send Payment Confirmation": {
       "main": [
         [
-          {
-            "node": "Send Onboarding",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Send Onboarding", "type": "main", "index": 0 }
         ]
       ]
     },
     "Send Onboarding": {
       "main": [
         [
-          {
-            "node": "Update Messages Sent",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Update Messages Sent", "type": "main", "index": 0 }
         ]
       ]
     },
     "Update Messages Sent": {
       "main": [
         [
-          {
-            "node": "Append to Confirmed Leads",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Append to Confirmed Leads", "type": "main", "index": 0 }
         ]
       ]
     },
     "Append to Confirmed Leads": {
       "main": [
         [
-          {
-            "node": "Success Page",
-            "type": "main",
-            "index": 0
-          }
+          { "node": "Success Page", "type": "main", "index": 0 }
         ]
       ]
     }
@@ -495,6 +447,5 @@
   "staticData": null,
   "tags": [],
   "triggerCount": 1,
-  "updatedAt": "2026-04-15T00:00:00.000Z",
   "versionId": "1"
 }
