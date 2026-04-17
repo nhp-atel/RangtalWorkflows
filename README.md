@@ -88,12 +88,65 @@ templates/
 
 ## n8n Workflows
 
-Built directly in n8n Cloud:
+Import the JSON files directly into n8n Cloud (... menu → Import from File):
 
-| Workflow | Trigger | Purpose |
-|----------|---------|---------|
-| WF1 — Lead Intake | Webhook POST (from Google Form) | Generate Lead ID, write to sheet, branch by payment method, send notifications |
-| WF2 — Zelle Approval | Webhook GET (approve link click) | Validate token, update sheet, send WhatsApp, append to Confirmed Leads |
+| Workflow | File | Trigger | Purpose |
+|----------|------|---------|---------|
+| WF1 — Lead Intake | `workflows/wf1-lead-intake.json` | Webhook POST (from Google Form) | Generate Lead ID, write to sheet, branch by payment method, send notifications |
+| WF2 — Zelle Approval | `workflows/wf2-zelle-approval.json` | Webhook GET (approve link click) | Validate token, update sheet, send WhatsApp, append to Confirmed Leads |
+
+After importing, configure Google Sheets credential + Twilio credential on each node and select your spreadsheet.
+
+## Connecting Google Form to n8n (Apps Script)
+
+Google Forms doesn't have built-in webhook support. A small Apps Script bridges the form to n8n — it fires every time someone submits the form and sends the data to your n8n webhook.
+
+### Setup
+
+1. Open your **Google Form**
+2. Click the **three-dot menu** (top right) → **Script Editor**
+3. Delete the default code and paste:
+
+```javascript
+var N8N_WEBHOOK_URL = 'https://YOUR-INSTANCE.app.n8n.cloud/webhook/lead-intake';
+
+function onFormSubmit(e) {
+  var response = e.response;
+  var items = response.getItemResponses();
+  var data = {};
+
+  items.forEach(function(item) {
+    data[item.getItem().getTitle()] = item.getResponse();
+  });
+
+  UrlFetchApp.fetch(N8N_WEBHOOK_URL, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(data),
+    muteHttpExceptions: true
+  });
+}
+```
+
+4. **Replace** `YOUR-INSTANCE` with your actual n8n webhook URL (find it by clicking the Webhook node in WF1)
+5. **Save** (Ctrl+S)
+6. Click the **clock icon** (Triggers) in the left sidebar → **+ Add Trigger**:
+   - Function: `onFormSubmit`
+   - Event source: `From form`
+   - Event type: `On form submit`
+7. Click **Save** and **Authorize** when prompted
+
+### How It Works
+
+```
+Someone submits Google Form
+  → Google automatically runs the Apps Script
+    → Script collects all form answers as JSON
+      → Sends POST request to your n8n webhook URL
+        → WF1 picks it up and processes the registration
+```
+
+> The full script is also available at [`scripts/form-webhook.gs`](scripts/form-webhook.gs)
 
 ## Setup
 
@@ -106,14 +159,15 @@ Built directly in n8n Cloud:
 
 ### Steps
 
-1. **Google Sheets** — Create spreadsheet following `docs/google-sheets-setup.md`
-2. **Google Form** — Create form following `docs/google-form-setup.md`
+1. **Google Sheets** — Create spreadsheet following [`docs/google-sheets-setup.md`](docs/google-sheets-setup.md)
+2. **Google Form** — Create form following [`docs/google-form-setup.md`](docs/google-form-setup.md)
 3. **n8n Credentials** — Connect Google Sheets OAuth2 + Twilio in n8n Cloud
-4. **WhatsApp Templates** — Submit templates from `templates/whatsapp-templates.md` to Twilio/Meta
-5. **Build WF1** — Lead Intake workflow in n8n (see implementation plan)
-6. **Build WF2** — Zelle Approval workflow in n8n (see implementation plan)
-7. **Apps Script** — Paste `scripts/form-webhook.gs` into Google Form Script Editor, update webhook URL
-8. **Test** — Submit form, verify sheet, click approve link, check WhatsApp delivery
+4. **WhatsApp Templates** — Submit templates from [`templates/whatsapp-templates.md`](templates/whatsapp-templates.md) to Twilio/Meta
+5. **Import WF1** — Import `workflows/wf1-lead-intake.json` into n8n, configure credentials and spreadsheet
+6. **Import WF2** — Import `workflows/wf2-zelle-approval.json` into n8n, configure credentials and spreadsheet
+7. **Apps Script** — Follow the "Connecting Google Form to n8n" section above
+8. **Activate** — Turn on both workflows in n8n
+9. **Test** — Submit form, verify sheet, click approve link, check WhatsApp delivery
 
 ### Credentials Needed
 
