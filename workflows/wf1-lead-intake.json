@@ -8,22 +8,22 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-b111-000000000001",
+      "id": "d4e5f6a7-2b1c-4d3e-a9f8-100000000001",
       "name": "Webhook Trigger",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [250, 300],
+      "position": [240, 400],
       "webhookId": "lead-intake-webhook"
     },
     {
       "parameters": {
-        "jsCode": "const now = new Date();\nconst dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');\nconst seq = String(now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()).padStart(3, '0');\nconst leadId = `RG-${dateStr}-${seq}`;\n\nconst token = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {\n  const r = Math.random() * 16 | 0;\n  const v = c === 'x' ? r : (r & 0x3 | 0x8);\n  return v.toString(16);\n});\n\nconst timestamp = now.toISOString().replace('T', ' ').slice(0, 19);\nconst body = $input.first().json.body || $input.first().json;\n\n// Find the payment question (starts with 'Have you made the payment')\nlet paymentAnswer = '';\nfor (const key of Object.keys(body)) {\n  if (key.startsWith('Have you made the payment')) {\n    paymentAnswer = body[key];\n    break;\n  }\n}\n\n// Determine payment method from answer\nlet paymentMethod = 'Cash';\nif (paymentAnswer.toLowerCase().includes('zelle')) {\n  paymentMethod = 'Zelle';\n}\n\nreturn [{\n  json: {\n    leadId,\n    timestamp,\n    name: body['Full Name'] || '',\n    phone: body['Phone Number'] || '',\n    email: '',\n    paymentMethod,\n    amount: '',\n    subscriptionPeriod: '',\n    notes: paymentAnswer,\n    approvalToken: token,\n    status: 'NEW_LEAD'\n  }\n}];"
+        "jsCode": "const now = new Date();\nconst dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');\nconst seq = String(now.getHours() * 3600 + now.getMinutes() * 60 + now.getSeconds()).padStart(3, '0');\nconst leadId = 'RG-' + dateStr + '-' + seq;\n\nconst timestamp = now.toISOString().replace('T', ' ').slice(0, 19);\nconst body = $input.first().json.body || $input.first().json;\n\nvar paymentAnswer = '';\nvar keys = Object.keys(body);\nfor (var i = 0; i < keys.length; i++) {\n  if (keys[i].indexOf('Have you made the payment') === 0) {\n    paymentAnswer = body[keys[i]];\n    break;\n  }\n}\n\nvar paymentMethod = 'Cash';\nif (paymentAnswer.toLowerCase().indexOf('zelle') >= 0) {\n  paymentMethod = 'Zelle';\n}\n\nreturn [{\n  json: {\n    leadId: leadId,\n    timestamp: timestamp,\n    name: body['Full Name'] || '',\n    phone: body['Phone Number'] || '',\n    email: '',\n    paymentMethod: paymentMethod,\n    amount: '',\n    subscriptionPeriod: '',\n    notes: paymentAnswer,\n    status: 'NEW_LEAD'\n  }\n}];"
       },
-      "id": "a1b2c3d4-1111-4aaa-b111-000000000002",
-      "name": "Generate Lead ID & Token",
+      "id": "d4e5f6a7-2b1c-4d3e-a9f8-100000000002",
+      "name": "Generate Lead ID",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [500, 300]
+      "position": [460, 400]
     },
     {
       "parameters": {
@@ -52,7 +52,6 @@
             "Subscription Period": "={{ $json.subscriptionPeriod }}",
             "Status": "NEW_LEAD",
             "Payment Verified": "No",
-            "Approval Token": "={{ $json.approvalToken }}",
             "Payment Confirmation Sent": "No",
             "Onboarding Sent": "No",
             "Follow-up Sent": "No",
@@ -70,7 +69,6 @@
             {"id": "Subscription Period", "displayName": "Subscription Period", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
             {"id": "Status", "displayName": "Status", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
             {"id": "Payment Verified", "displayName": "Payment Verified", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
-            {"id": "Approval Token", "displayName": "Approval Token", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
             {"id": "Payment Confirmation Sent", "displayName": "Payment Confirmation Sent", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
             {"id": "Onboarding Sent", "displayName": "Onboarding Sent", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
             {"id": "Follow-up Sent", "displayName": "Follow-up Sent", "required": false, "defaultMatch": false, "display": true, "type": "string", "canBeUsedToMatch": true},
@@ -79,11 +77,11 @@
         },
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-b111-000000000003",
+      "id": "d4e5f6a7-2b1c-4d3e-a9f8-100000000003",
       "name": "Write to Pending Leads",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [750, 300],
+      "position": [680, 400],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "",
@@ -143,11 +141,11 @@
         },
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-b111-000000000004",
+      "id": "d4e5f6a7-2b1c-4d3e-a9f8-100000000004",
       "name": "Payment Method Branch",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.2,
-      "position": [1000, 300]
+      "position": [900, 400]
     },
     {
       "parameters": {
@@ -177,31 +175,13 @@
         },
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-b111-000000000005",
+      "id": "d4e5f6a7-2b1c-4d3e-a9f8-100000000005",
       "name": "Update Status Zelle",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [1300, 150],
+      "position": [1140, 260],
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "",
-          "name": "-- SELECT CREDENTIAL --"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "from": "",
-        "to": "",
-        "message": "=New Zelle registration: {{ $json.name }} — {{ $json.amount }} for {{ $json.subscriptionPeriod }}. Check your bank and approve: YOUR_N8N_URL/webhook/approve?leadId={{ $json.leadId }}&token={{ $json.approvalToken }}"
-      },
-      "id": "a1b2c3d4-1111-4aaa-b111-000000000006",
-      "name": "Send Team Notification",
-      "type": "n8n-nodes-base.twilio",
-      "typeVersion": 1,
-      "position": [1550, 150],
-      "credentials": {
-        "twilioApi": {
           "id": "",
           "name": "-- SELECT CREDENTIAL --"
         }
@@ -212,11 +192,11 @@
         "respondWith": "json",
         "responseBody": "={\"status\":\"ok\",\"leadId\":\"{{ $json.leadId }}\",\"message\":\"Zelle registration received\"}"
       },
-      "id": "a1b2c3d4-1111-4aaa-b111-000000000007",
+      "id": "d4e5f6a7-2b1c-4d3e-a9f8-100000000006",
       "name": "Respond Zelle",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [1800, 150]
+      "position": [1360, 260]
     },
     {
       "parameters": {
@@ -246,11 +226,11 @@
         },
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-b111-000000000008",
+      "id": "d4e5f6a7-2b1c-4d3e-a9f8-100000000007",
       "name": "Update Status Cash",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [1300, 450],
+      "position": [1140, 540],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "",
@@ -261,14 +241,14 @@
     {
       "parameters": {
         "from": "",
-        "to": "=whatsapp:{{ $json.phone }}",
-        "message": "=Hi {{ $json.name }}, thanks for registering for Rangtal Garba ({{ $json.subscriptionPeriod }})! Your payment method is marked as cash — {{ $json.amount }}. Please bring your payment to the next class. Questions? Reply to this message."
+        "to": "={{ $json.phone }}",
+        "message": "=Hi {{ $json.name }}, thanks for registering for Rangtal Garba! Your payment method is marked as cash. Please bring your payment to the next class."
       },
-      "id": "a1b2c3d4-1111-4aaa-b111-000000000009",
+      "id": "d4e5f6a7-2b1c-4d3e-a9f8-100000000008",
       "name": "Send Cash Reminder",
       "type": "n8n-nodes-base.twilio",
       "typeVersion": 1,
-      "position": [1550, 450],
+      "position": [1360, 540],
       "credentials": {
         "twilioApi": {
           "id": "",
@@ -304,11 +284,11 @@
         },
         "options": {}
       },
-      "id": "a1b2c3d4-1111-4aaa-b111-000000000010",
+      "id": "d4e5f6a7-2b1c-4d3e-a9f8-100000000009",
       "name": "Update Follow-up Sent",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.5,
-      "position": [1800, 450],
+      "position": [1580, 540],
       "credentials": {
         "googleSheetsOAuth2Api": {
           "id": "",
@@ -321,11 +301,11 @@
         "respondWith": "json",
         "responseBody": "={\"status\":\"ok\",\"leadId\":\"{{ $json.leadId }}\",\"message\":\"Cash registration received\"}"
       },
-      "id": "a1b2c3d4-1111-4aaa-b111-000000000011",
+      "id": "d4e5f6a7-2b1c-4d3e-a9f8-100000000010",
       "name": "Respond Cash",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1.1,
-      "position": [2050, 450]
+      "position": [1800, 540]
     }
   ],
   "connections": {
@@ -333,14 +313,14 @@
       "main": [
         [
           {
-            "node": "Generate Lead ID & Token",
+            "node": "Generate Lead ID",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Generate Lead ID & Token": {
+    "Generate Lead ID": {
       "main": [
         [
           {
@@ -381,17 +361,6 @@
       ]
     },
     "Update Status Zelle": {
-      "main": [
-        [
-          {
-            "node": "Send Team Notification",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Send Team Notification": {
       "main": [
         [
           {
@@ -444,5 +413,5 @@
   "tags": [],
   "triggerCount": 1,
   "updatedAt": "2026-04-15T00:00:00.000Z",
-  "versionId": "1"
+  "versionId": "2"
 }
